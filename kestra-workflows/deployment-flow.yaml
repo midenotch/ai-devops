@@ -1,0 +1,73 @@
+id: deployment-flow
+namespace: ai-devops
+description: Automated deployment to Vercel
+
+inputs:
+  - id: taskId
+    type: STRING
+    required: true
+  - id: pullRequestUrl
+    type: STRING
+    required: true
+  - id: deployTo
+    type: STRING
+    defaults: vercel
+
+tasks:
+  - id: notify_deployment_start
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "text": "🚀 Deployment Started for Task {{ inputs.taskId }}"
+      }
+
+  - id: deploy_to_vercel
+    type: io.kestra.plugin.scripts.shell.Commands
+    docker:
+      image: node:18
+    env:
+      VERCEL_TOKEN: "{{ secret('VERCEL_API_TOKEN') }}"
+      VERCEL_PROJECT_ID: "{{ secret('VERCEL_PROJECT_ID') }}"
+    commands:
+      - npm install -g vercel
+      - vercel --token $VERCEL_TOKEN --prod
+
+  - id: wait_for_deployment
+    type: io.kestra.plugin.core.flow.Sleep
+    duration: PT1M
+
+  - id: verify_deployment
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "Verifying deployment..."
+      - curl -I "https://{{ secret('VERCEL_PROJECT_ID') }}.vercel.app"
+
+  - id: notify_deployment_success
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "text": "✅ Deployment Successful for Task {{ inputs.taskId }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "Deployment URL: https://{{ secret('VERCEL_PROJECT_ID') }}.vercel.app"
+            }
+          }
+        ]
+      }
+
+errors:
+  - id: notify_deployment_failure
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "text": "❌ Deployment Failed for Task {{ inputs.taskId }}"
+      }
+
+---
+

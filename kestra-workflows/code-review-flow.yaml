@@ -1,0 +1,40 @@
+id: code-review-flow
+namespace: ai-devops
+description: Automated code review workflow with CodeRabbit
+
+inputs:
+  - id: taskId
+    type: STRING
+    required: true
+  - id: repository
+    type: JSON
+    required: true
+  - id: pullRequestNumber
+    type: INT
+    required: true
+
+tasks:
+  - id: trigger_coderabbit
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "Triggering CodeRabbit review for PR #{{ inputs.pullRequestNumber }}"
+      - curl -X POST "https://api.coderabbit.ai/v1/reviews" \
+          -H "Authorization: Bearer {{ secret('CODERABBIT_API_KEY') }}" \
+          -H "Content-Type: application/json" \
+          -d '{"repository":"{{ inputs.repository.fullName }}","pull_request":{{ inputs.pullRequestNumber }}}'
+
+  - id: wait_for_review
+    type: io.kestra.plugin.core.flow.Sleep
+    duration: PT30S
+
+  - id: fetch_review_results
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "Fetching review results..."
+      - curl "https://api.coderabbit.ai/v1/reviews/{{ inputs.repository.fullName }}/{{ inputs.pullRequestNumber }}" \
+          -H "Authorization: Bearer {{ secret('CODERABBIT_API_KEY') }}"
+
+  - id: post_results
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "Review results processed"

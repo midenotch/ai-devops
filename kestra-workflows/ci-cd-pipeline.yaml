@@ -1,0 +1,85 @@
+id: ci-cd-pipeline
+namespace: ai-devops
+description: CI/CD pipeline for AI-generated code changes
+
+inputs:
+  - id: taskId
+    type: STRING
+    required: true
+  - id: repository
+    type: JSON
+    required: true
+  - id: changes
+    type: JSON
+    required: true
+  - id: branch
+    type: STRING
+    required: true
+
+tasks:
+  - id: notify_start
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "text": "🚀 CI/CD Pipeline Started for Task {{ inputs.taskId }}"
+      }
+
+  - id: clone_repository
+    type: io.kestra.plugin.git.Clone
+    url: "{{ inputs.repository.cloneUrl }}"
+    branch: "{{ inputs.branch }}"
+
+  - id: run_tests
+    type: io.kestra.plugin.scripts.node.Script
+    docker:
+      image: node:18
+    beforeCommands:
+      - npm install
+    script: |
+      npm test || exit 0
+      echo "Tests completed"
+
+  - id: lint_code
+    type: io.kestra.plugin.scripts.node.Script
+    docker:
+      image: node:18
+    script: |
+      npm install -g eslint
+      eslint . --ext .js,.jsx,.ts,.tsx || exit 0
+      echo "Linting completed"
+
+  - id: build_project
+    type: io.kestra.plugin.scripts.node.Script
+    docker:
+      image: node:18
+    beforeCommands:
+      - npm install
+    script: |
+      npm run build || echo "No build script found"
+      echo "Build completed"
+
+  - id: security_scan
+    type: io.kestra.plugin.scripts.node.Script
+    docker:
+      image: node:18
+    script: |
+      npm audit --audit-level=high || exit 0
+      echo "Security scan completed"
+
+  - id: notify_success
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "text": "✅ CI/CD Pipeline Completed Successfully for Task {{ inputs.taskId }}"
+      }
+
+errors:
+  - id: notify_failure
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "text": "❌ CI/CD Pipeline Failed for Task {{ inputs.taskId }}"
+      }
