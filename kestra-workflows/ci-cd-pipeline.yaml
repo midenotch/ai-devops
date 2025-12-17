@@ -81,5 +81,11 @@ errors:
     url: "{{ secret('SLACK_WEBHOOK_URL') }}"
     payload: |
       {
-        "text": "❌ CI/CD Pipeline Failed for Task {{ inputs.taskId }}"
-      }
+        "text": "❌ CI/CD Pipeline Failed for Task {{ inputs.taskId }}",
+        "attachments": [
+          {
+            "color": "#FF0000",
+            "text": "Flow ID: {{ flow.id }}\nExecution ID: {{ execution.id }}\nError: {{ error.message }}"
+          }
+        ]
+      } # Added closing curly bracket for payload and additional error details
