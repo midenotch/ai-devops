@@ -64,7 +64,9 @@ tasks:
     docker:
       image: node:18
     script: |
-      npm audit --audit-level=high || exit 0
+      # FIX: Removed '|| exit 0' to ensure the pipeline fails if high-severity vulnerabilities are found.
+      # This makes the security scan a blocking step for critical issues.
+      npm audit --audit-level=high
       echo "Security scan completed"
 
   - id: notify_success
