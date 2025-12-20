@@ -62,7 +62,9 @@ const taskSchema = new mongoose.Schema(
         error: String,
       },
     ],
-    clineAnalysis: {
+    // FIX: Corrected the field name from 'clineAnalysis' to 'codeAnalysis'
+    // to improve clarity and consistency, as 'cline' was likely a typo.
+    codeAnalysis: { 
       filesAnalyzed: [String],
       proposedChanges: mongoose.Schema.Types.Mixed,
       reasoning: String,
