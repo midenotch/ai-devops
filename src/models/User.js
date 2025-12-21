@@ -97,7 +97,9 @@ userSchema.methods.isGitHubConnected = function () {
 userSchema.methods.incrementStat = async function (statName) {
   if (this.stats[statName] !== undefined) {
     this.stats[statName]++;
-    await this.save();
+    // FIX: Added await this.save() to persist the changes to the database.
+    // Without this, the incremented stat would not be saved.
+    await this.save(); 
   }
 };
 
