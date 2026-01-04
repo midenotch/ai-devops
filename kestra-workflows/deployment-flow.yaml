@@ -39,9 +39,12 @@ tasks:
 
   - id: verify_deployment
     type: io.kestra.plugin.scripts.shell.Commands
+    env:
+      VERCEL_TOKEN: "{{ secret('VERCEL_API_TOKEN') }}"
+      VERCEL_PROJECT_ID: "{{ secret('VERCEL_PROJECT_ID') }}"
     commands:
       - echo "Verifying deployment..."
-      - curl -I "https://{{ secret('VERCEL_PROJECT_ID') }}.vercel.app"
+      - curl -I -H "Authorization: Bearer $VERCEL_TOKEN" "https://$VERCEL_PROJECT_ID.vercel.app"
 
   - id: notify_deployment_success
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
