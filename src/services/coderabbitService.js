@@ -22,26 +22,31 @@ class CodeRabbitService {
   }
 
   async performActualReview(repoOwner, repoName, changes) {
-    const response = await axios.post(
-      `${this.baseUrl}/reviews`,
-      {
-        repository: `${repoOwner}/${repoName}`,
-        changes: changes,
-        options: {
-          checkQuality: true,
-          checkSecurity: true,
-          checkPerformance: true,
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/reviews`,
+        {
+          repository: `${repoOwner}/${repoName}`,
+          changes: changes,
+          options: {
+            checkQuality: true,
+            checkSecurity: true,
+            checkPerformance: true,
+          },
         },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    return this.formatReview(response.data);
+      return this.formatReview(response.data);
+    } catch (error) {
+      console.error("Error performing actual review:", error);
+      throw error;
+    }
   }
 
   simulateReview(changes) {
