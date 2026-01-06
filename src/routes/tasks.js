@@ -2,8 +2,16 @@ import express from "express";
 import Task from "../models/Task.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { addTaskToQueue } from "../services/queueService.js";
+import Joi from "joi";
 
 const router = express.Router();
+
+const taskSchema = Joi.object({
+  title: Joi.string().trim().min(1).max(255).required(),
+  description: Joi.string().trim().min(1).max(2000).required(),
+  type: Joi.string().trim().valid("bug", "feature", "improvement").required(),
+  repository: Joi.string().trim().uri().allow(null, ""),
+});
 
 // Get all tasks for authenticated user
 router.get("/", authenticateToken, async (req, res) => {
@@ -39,15 +47,15 @@ router.get("/:id", authenticateToken, async (req, res) => {
 // Create new task
 router.post("/", authenticateToken, async (req, res) => {
   try {
-    const { title, description, type, repository } = req.body;
-
-    // Validation
-    if (!title || !description || !type) {
+    const { error, value } = taskSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+    if (error) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields: title, description, type",
+        error: error.details.map((d) => d.message).join(", "),
       });
     }
+
+    const { title, description, type, repository } = value;
 
     // Initialize task stages
     const stages = [
