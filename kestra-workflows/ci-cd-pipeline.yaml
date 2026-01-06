@@ -37,7 +37,7 @@ tasks:
     beforeCommands:
       - npm install
     script: |
-      npm test || exit 0
+      npm test
       echo "Tests completed"
 
   - id: lint_code
