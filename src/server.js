@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { createClient } from 'redis';
 import taskRoutes from "./routes/tasks.js";
 import githubRoutes from "./routes/github.js";
 import webhookRoutes from "./routes/webhooks.js";
@@ -37,6 +38,14 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+// Redis client setup
+const redisClient = createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+redisClient.on('error', (err) => console.error('❌ Redis Client Error', err));
+redisClient.connect().then(() => console.log('✅ Redis connected')).catch((err) => console.error('❌ Redis connection error:', err));
+
 // Make Socket.IO available to routes
 app.set("io", io);
 
@@ -46,13 +55,21 @@ app.use("/api/auth/github", githubRoutes);
 app.use("/api/webhooks", webhookRoutes);
 
 // Health check
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+  let redisStatus = false;
+  try {
+    await redisClient.ping();
+    redisStatus = true;
+  } catch (error) {
+    redisStatus = false;
+  }
+
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     services: {
       mongodb: mongoose.connection.readyState === 1,
-      redis: true, // Add Redis health check
+      redis: redisStatus,
     },
   });
 });
