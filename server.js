@@ -8,6 +8,7 @@ import taskRoutes from "./routes/tasks.js";
 import githubRoutes from "./routes/github.js";
 import authRoutes from "./routes/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { createClient } from "redis"; // Import createClient for Redis
 
 dotenv.config();
 
@@ -19,6 +20,25 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+
+// Initialize Redis client
+// Use process.env.REDIS_URL or a default
+const redisClient = createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+// Handle Redis connection and errors
+redisClient.on('connect', () => console.log('✅ Redis connected'));
+redisClient.on('error', (err) => console.error('❌ Redis connection error:', err));
+
+// Connect to Redis when the server starts
+(async () => {
+  try {
+    await redisClient.connect();
+  } catch (err) {
+    console.error("❌ Failed to connect to Redis on startup:", err);
+  }
+})();
 
 // Middleware
 app.use(
@@ -45,14 +65,25 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/github", githubRoutes);
 
 // Health check
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => { // Made async to await Redis check
+  let redisStatus = false;
+  try {
+    // Ping Redis to check its status
+    await redisClient.ping();
+    redisStatus = true;
+  } catch (error) {
+    console.error("Redis health check failed:", error.message);
+    redisStatus = false;
+  }
+
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     version: "1.0.0",
     services: {
       mongodb: mongoose.connection.readyState === 1,
-      redis: true,
+      // Fix: Dynamically check Redis connection status
+      redis: redisStatus,
     },
   });
 });
