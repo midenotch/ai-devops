@@ -19,7 +19,7 @@ inputs:
 tasks:
   - id: notify_start
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
-    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    url: "${SLACK_WEBHOOK_URL}"
     payload: |
       {
         "text": "🚀 CI/CD Pipeline Started for Task {{ inputs.taskId }}"
@@ -64,14 +64,12 @@ tasks:
     docker:
       image: node:18
     script: |
-      # FIX: Removed '|| exit 0' to ensure the pipeline fails if high-severity vulnerabilities are found.
-      # This makes the security scan a blocking step for critical issues.
       npm audit --audit-level=high
       echo "Security scan completed"
 
   - id: notify_success
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
-    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    url: "${SLACK_WEBHOOK_URL}"
     payload: |
       {
         "text": "✅ CI/CD Pipeline Completed Successfully for Task {{ inputs.taskId }}"
@@ -80,7 +78,7 @@ tasks:
 errors:
   - id: notify_failure
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
-    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    url: "${SLACK_WEBHOOK_URL}"
     payload: |
       {
         "text": "❌ CI/CD Pipeline Failed for Task {{ inputs.taskId }}",
@@ -90,4 +88,4 @@ errors:
             "text": "Flow ID: {{ flow.id }}\nExecution ID: {{ execution.id }}\nError: {{ error.message }}"
           }
         ]
-      } # Added closing curly bracket for payload and additional error details
+      }
