@@ -5,7 +5,7 @@ description: Periodic health check for deployed applications
 triggers:
   - id: schedule
     type: io.kestra.plugin.core.trigger.Schedule
-    cron: "*/5 * * * *" # Every 5 minutes
+    cron: "0 0 * * *" # Every hour
 
 tasks:
   - id: check_backend_health
