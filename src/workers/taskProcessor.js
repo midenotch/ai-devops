@@ -11,6 +11,7 @@ import kestraService from "../services/kestraService.js";
 import simpleGit from "simple-git";
 import fs from "fs/promises";
 import path from "path";
+import url from "url";
 
 dotenv.config();
 
@@ -69,6 +70,10 @@ const worker = new Worker(
         await fs.mkdir(repoPath, { recursive: true });
 
         const repoUrl = task.repository.cloneUrl;
+        const parsedUrl = new url.URL(repoUrl);
+        if (!parsedUrl.protocol || !parsedUrl.host) {
+          throw new Error("Invalid repository URL");
+        }
         const urlWithAuth = repoUrl.replace(
           "https://",
           `https://x-access-token:${user.accessToken}@`
@@ -302,62 +307,4 @@ async function analyzeRepository(repoPath, taskDescription) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-
-      if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
-
-      if (entry.isDirectory()) {
-        await walk(fullPath);
-      } else {
-        const relativePath = fullPath.replace(repoPath, "");
-        files.push(relativePath);
-      }
-    }
-  }
-
-  await walk(repoPath);
-
-  // Filter relevant files based on task
-  const relevantFiles = files.filter((f) => {
-    if (taskDescription.toLowerCase().includes("api")) {
-      return (
-        f.includes("api") || f.includes("route") || f.includes("controller")
-      );
-    }
-    if (taskDescription.toLowerCase().includes("frontend")) {
-      return f.match(/\.(jsx?|tsx?|vue)$/);
-    }
-    return f.match(/\.(js|ts|jsx|tsx|py|java)$/);
-  });
-
-  return {
-    filesAnalyzed: files.length,
-    identifiedFiles: relevantFiles,
-    proposedChanges: [],
-    reasoning: `Analyzed ${files.length} files, identified ${relevantFiles.length} relevant files`,
-  };
-}
-
-// Helper: Generate code changes
-async function generateCodeChanges(analysis, description, type) {
-  // In production, this would use Oumi/OpenAI to generate actual code
-  // For demo, return simulated changes
-  return analysis.identifiedFiles.slice(0, 3).map((file) => ({
-    path: file,
-    type: "modification",
-    content: `// AI-generated code for: ${description}\n// TODO: Implement actual changes\n`,
-    description: `Optimized code in ${file}`,
-  }));
-}
-
-worker.on("completed", (job) => {
-  console.log(`✅ Job ${job.id} completed`);
-});
-
-worker.on("failed", (job, err) => {
-  console.error(`❌ Job ${job.id} failed:`, err.message);
-});
-
-console.log("🔄 Task processor worker started");
-
-export default worker;
+      const fullPath = path.join(dir
