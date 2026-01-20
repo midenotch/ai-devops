@@ -9,14 +9,46 @@ inputs:
   - id: repository
     type: JSON
     required: true
+    validation:
+      - pattern: "^(https|http|ssh)://[a-zA-Z0-9.-]+/[a-zA-Z0-9.-]+$"
+        message: "Invalid repository URL"
   - id: changes
     type: JSON
     required: true
   - id: branch
     type: STRING
     required: true
+    validation:
+      - pattern: "^[a-zA-Z0-9_-]+$"
+        message: "Invalid branch name"
 
 tasks:
+  - id: validate_repository
+    type: io.kestra.plugin.scripts.bash.Script
+    docker:
+      image: bash:5
+    script: |
+      if ! [[ "{{ inputs.repository.cloneUrl }}" =~ ^https://[a-zA-Z0-9.-]+/[a-zA-Z0-9.-]+$ ]] && 
+           ! [[ "{{ inputs.repository.cloneUrl }}" =~ ^http://[a-zA-Z0-9.-]+/[a-zA-Z0-9.-]+$ ]] && 
+           ! [[ "{{ inputs.repository.cloneUrl }}" =~ ^ssh://[a-zA-Z0-9.-]+/[a-zA-Z0-9.-]+$ ]]; then
+        echo "Invalid repository URL"
+        exit 1
+      fi
+    onFail:
+      - id: notify_invalid_repository
+        type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+        url: "${SLACK_WEBHOOK_URL}"
+        payload: |
+          {
+            "text": "❌ Invalid repository URL for Task {{ inputs.taskId }}",
+            "attachments": [
+              {
+                "color": "#FF0000",
+                "text": "Flow ID: {{ flow.id }}\nExecution ID: {{ execution.id }}\nError: Invalid repository URL"
+              }
+            ]
+          }
+
   - id: notify_start
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
     url: "${SLACK_WEBHOOK_URL}"
@@ -24,11 +56,15 @@ tasks:
       {
         "text": "🚀 CI/CD Pipeline Started for Task {{ inputs.taskId }}"
       }
+    dependsOn:
+      - validate_repository
 
   - id: clone_repository
     type: io.kestra.plugin.git.Clone
     url: "{{ inputs.repository.cloneUrl }}"
     branch: "{{ inputs.branch }}"
+    dependsOn:
+      - validate_repository
 
   - id: run_tests
     type: io.kestra.plugin.scripts.node.Script
@@ -39,6 +75,8 @@ tasks:
     script: |
       npm test
       echo "Tests completed"
+    dependsOn:
+      - clone_repository
 
   - id: lint_code
     type: io.kestra.plugin.scripts.node.Script
@@ -48,6 +86,8 @@ tasks:
       npm install -g eslint
       eslint . --ext .js,.jsx,.ts,.tsx || exit 0
       echo "Linting completed"
+    dependsOn:
+      - clone_repository
 
   - id: build_project
     type: io.kestra.plugin.scripts.node.Script
@@ -58,6 +98,8 @@ tasks:
     script: |
       npm run build || echo "No build script found"
       echo "Build completed"
+    dependsOn:
+      - clone_repository
 
   - id: security_scan
     type: io.kestra.plugin.scripts.node.Script
@@ -66,6 +108,8 @@ tasks:
     script: |
       npm audit --audit-level=high
       echo "Security scan completed"
+    dependsOn:
+      - clone_repository
 
   - id: notify_success
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
@@ -74,6 +118,11 @@ tasks:
       {
         "text": "✅ CI/CD Pipeline Completed Successfully for Task {{ inputs.taskId }}"
       }
+    dependsOn:
+      - run_tests
+      - lint_code
+      - build_project
+      - security_scan
 
 errors:
   - id: notify_failure
