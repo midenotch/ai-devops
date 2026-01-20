@@ -44,7 +44,7 @@ tasks:
       VERCEL_PROJECT_ID: "{{ secret('VERCEL_PROJECT_ID') }}"
     commands:
       - echo "Verifying deployment..."
-      - curl -I -H "Authorization: Bearer $VERCEL_TOKEN" "https://$VERCEL_PROJECT_ID.vercel.app"
+      - curl -I -H "Authorization: Bearer ${VERCEL_TOKEN}" "https://${VERCEL_PROJECT_ID}.vercel.app"
 
   - id: notify_deployment_success
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
@@ -57,7 +57,7 @@ tasks:
             "type": "section",
             "text": {
               "type": "mrkdwn",
-              "text": "Deployment URL: https://{{ secret('VERCEL_PROJECT_ID') }}.vercel.app"
+              "text": "Deployment URL: https://${VERCEL_PROJECT_ID}.vercel.app"
             }
           }
         ]
