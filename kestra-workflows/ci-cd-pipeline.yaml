@@ -64,10 +64,7 @@ tasks:
     docker:
       image: node:18
     script: |
-      npm audit --audit-level=high || {
-        echo "Security scan failed with error code $?"
-        exit 1
-      }
+      npm audit --audit-level=high
       echo "Security scan completed"
 
   - id: notify_success
